@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  QC
+  VIEWER
+}
+
+enum InventoryStatus {
+  CREATED
+  STORED
+  VERIFIED
+  DISPATCHED
+  CLOSED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(VIEWER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inventoryEvents InventoryEvent[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model Item {
+  id            String          @id @default(uuid())
+  name          String
+  qrCode        String          @unique
+  currentStatus InventoryStatus @default(CREATED)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  inventoryEvents InventoryEvent[]
+
+  @@map("items")
+}
+
+model InventoryEvent {
+  id            String          @id @default(uuid())
+  itemId        String
+  fromStatus    InventoryStatus
+  toStatus      InventoryStatus
+  action        String
+  updatedBy     String
+  updatedAt     DateTime        @default(now())
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [updatedBy], references: [id])
+
+  @@map("inventory_events")
+}
